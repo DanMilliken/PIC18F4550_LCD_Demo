@@ -4,16 +4,15 @@
  *
  * Author: Dan Milliken
  *
- * Date: 2014-10-29
+ * Date: 2014-11-19
  * 
- * Project: PIC18F4550_RTC_Demo
+ * Project: PIC18F4550_LCD_Demo
  *
- * Description: Demonstrates using the I2C master mode on the PIC18F4550 Microcontroller to communicate with a DS1307 Real Time Clock (RTC). PWM output on pin 6 (CCP1) will be used to drive an LED.
- * Pin 17 (AN0) will be connected to a potentiometer that will control the PWM
- * duty cycle. The A/D module will read the voltage on AN0, convert it to a
- * numeric value, and use it to set the duty cycle. For debugging the UART will
- * send data to a MAX232 IC for US232 output to a PC. Timing is controlled by a
- * 1ms clock interrupt driven by Timer2.
+ * Description: Demonstrates output to an LCD using the PIC18F4550. The LCD
+ * is a 1602A with a ST7066U controller chip. It's to be connected in four bit
+ * mode using A0-A3 and E0-E2 for the control signals. A menu will be presented
+ * on the UART prompting for a string to be displayed on the LCD. Timing is
+ * controlled by a 1ms clock interrupt driven by Timer2.
  *
  * License: Licensed under the Creative Commons Attribution-ShareAlike 4.0
  * International License (http://creativecommons.org/licenses/by-sa/4.0/)
@@ -112,7 +111,7 @@ struct menu menu_lcd_control = { "LCD Control", NULL, 1, { &menu_lcd_control_dis
 struct menu menu_main = { "Main Menu", NULL, 1, { &menu_lcd_control } };
 
 /* delay functions for LCD */
-void DelayFor18TCY(void) { _delay(18); };         // delay for 18 Tcy
+void DelayFor18TCY(void) { _delay(18); };         // delay for 18 Tcy, 3.6us
 void DelayPORXLCD(void) { __delay_ms(15); };      // delay at least 15ms
 void DelayXLCD(void) { __delay_ms(5); };          // delay at least 5ms
 #assert _XTAL_FREQ == 20000000                    // Delay45ms based on 20MHz clock
@@ -168,9 +167,24 @@ void NavigateMenu(struct menu *mnu)
     return;
 }
 
+void EnterCriticalSection(void)
+{
+    INTCONbits.GIE = 0;
+    return;
+}
+
+void ExitCriticalSection(void)
+{
+    INTCONbits.GIE = 1;
+    return;
+}
+
 unsigned char BusyLCD(void)
 {
-    RW_PIN = 1;                     // Set the control bits for read
+    __delay_us(80);             // Must wait at least 80us after last instruction
+                                // to check busy flag.
+    EnterCriticalSection();
+    RW_PIN = 1;                 // Set the control bits for read
     RS_PIN = 0;
     DelayFor18TCY();
     E_PIN = 1;                      // Clock in the command
@@ -183,6 +197,7 @@ unsigned char BusyLCD(void)
         DelayFor18TCY();
         E_PIN = 0;
         RW_PIN = 0;             // Reset control line
+        ExitCriticalSection();
         return 1;               // Return TRUE
     }
     else                            // Busy bit is low
@@ -193,12 +208,14 @@ unsigned char BusyLCD(void)
         DelayFor18TCY();
         E_PIN = 0;
         RW_PIN = 0;             // Reset control line
+        ExitCriticalSection();
         return 0;               // Return FALSE
     }
 }
 
 void WriteCmdLCD(unsigned char cmd)
 {
+    EnterCriticalSection();
     TRIS_DATA_PORT &= 0xf0;
     RS_PIN = 0;
     RW_PIN = 0;                     // Set control signals for command
@@ -218,12 +235,15 @@ void WriteCmdLCD(unsigned char cmd)
     E_PIN = 0;
 
     TRIS_DATA_PORT |= 0x0f;
+    ExitCriticalSection();
+    DelayXLCD();
 
     return;
 }
 
 void WriteDataLCD(char data)
 {
+    EnterCriticalSection();
     TRIS_DATA_PORT &= 0xf0;
     RS_PIN = 1;                     // Set control bits
     RW_PIN = 0;
@@ -247,12 +267,15 @@ void WriteDataLCD(char data)
     E_PIN = 0;
 
     TRIS_DATA_PORT |= 0x0f;
+    ExitCriticalSection();
+    DelayXLCD();
 
     return;
 }
 
 void SetDDRamAddr(unsigned char DDaddr)
 {
+    EnterCriticalSection();
     TRIS_DATA_PORT &= 0xf0;                 // Make port output
     DATA_PORT &= 0xf0;                      // and write upper nibble
     DATA_PORT |= (((DDaddr | 0b10000000)>>4) & 0x0f);
@@ -271,6 +294,8 @@ void SetDDRamAddr(unsigned char DDaddr)
     E_PIN = 0;
 
     TRIS_DATA_PORT |= 0x0f;                 // Make port input
+    ExitCriticalSection();
+    DelayXLCD();
 
     return;
 
@@ -318,8 +343,7 @@ void InitLCD(unsigned char lcdtype)
 
     // Set entry mode inc, no shift
     while(BusyLCD());              // Wait if LCD busy
-//    WriteCmdLCD(SHIFT_CUR_LEFT);   // Entry Mode
-    WriteCmdLCD(0b00000110);   // Shift cursor right, increment DRAM. Don't shift display.
+    WriteCmdLCD(0b00000110);       // Shift cursor right, increment DRAM. Don't shift display.
 
     // Set DD Ram address to 0
     while(BusyLCD());              // Wait if LCD busy
@@ -338,7 +362,7 @@ void ClearLCD()
         WriteDataLCD(' '); // Write character to LCD
 
     while(BusyLCD());              // Wait if LCD busy
-    SetDDRamAddr(0x40);            // Set Display data ram address to 0
+    SetDDRamAddr(0x40);            // Set Display data ram address to second line
 
     for(int i=0; i<16; i++)
         WriteDataLCD(' '); // Write character to LCD
@@ -353,11 +377,14 @@ void putsLCD(char *buffer)
 {
     ClearLCD();
 
-    while(*buffer)                  // Write data to LCD up to null
+    while(*buffer)               // Write data to LCD up to null
     {
-        while(BusyLCD());      // Wait while LCD is busy
-        WriteDataLCD(*buffer); // Write character to LCD
-        buffer++;               // Increment buffer
+        while(BusyLCD());        // Wait while LCD is busy
+        if(*buffer=='\n')
+          SetDDRamAddr(0x40);    // Set Display data ram address to second line
+        else
+          WriteDataLCD(*buffer); // Write character to LCD
+        buffer++;                // Increment buffer
     }
 
     return;
@@ -371,44 +398,8 @@ int main(void)
     timer2_init(); // initialize the system time
     printf("%ul: System clock started\n", GetSystemTime());
 
-    printf("%ul: I2C initialized.\n", GetSystemTime());
-
-    // *** Timing test ***
-//    TRIS_RW = 0;                    // All control signals made outputs
-//    TRIS_RS = 0;
-//    TRIS_E = 0;
-//    TRIS_DATA_PORT = 0;
-//    while(1)
-//    {
-//        DATA_PORT |= 0x0f;
-//
-//        RW_PIN = 1;                     // R/W pin made low
-//        RS_PIN = 1;                     // Register select pin made low
-//        E_PIN = 1;                      // Clock pin made low
-//        Delay1KTCYx(225);
-//        DATA_PORT &= 0xf0;
-//
-//        RW_PIN = 0;                     // R/W pin made low
-//        RS_PIN = 0;                     // Register select pin made low
-//        E_PIN = 0;                      // Clock pin made low
-//        Delay1KTCYx(225);
-//    }
-    // *** End timing test
-
     InitLCD(FOUR_BIT);    // initialize the LCD: 4-bit, 2 line, 5x11 dots per character
     printf("%ul: LCD initialized.\n", GetSystemTime());
-//    while(1)
-//    {
-//       char disp_string[34] = "123";
-       char disp_string[34] = "Hello world!";
-       putsLCD(disp_string);
-//       TRISAbits.TRISA5 = 0;
-//       LATAbits.LATA5 = 0;
-//       DelayFor18TCY();
-//       LATAbits.LATA5 = 1;
-//       DelayFor18TCY();
-//       LATAbits.LATA5 = 0;
-//    }
 
     INTCONbits.PEIE = 1; // enable peripheral interrupts
     INTCONbits.GIE = 1;  // enable interrupts
@@ -447,7 +438,7 @@ void timer2_init(void)
     T2CONbits.TMR2ON = 1;    // Timer2 ON
 
     PIR1bits.TMR2IF = 0;     // Timer2 flag clear
-    PIE1bits.TMR2IE = 1;     // Timer2 interrupt enable
+    PIE1bits.TMR2IE = 0;     // Timer2 interrupt enable
 }
 
 void UART_init(void)

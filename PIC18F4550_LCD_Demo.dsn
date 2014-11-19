@@ -9,14 +9,14 @@ download the executable.-->
 		<DETAILS>
 			<Size width='1485' height='1050'/>
 			<GUIDES horiz='7' vert='5'/>
-			<TITLE>PIC18F4550 RTC Demo</TITLE>
+			<TITLE>PIC18F4550 LCD Demo</TITLE>
 			<AUTHOR>Dan Milliken (dan.milliken@gmail.com)</AUTHOR>
 			<REVISION>1.0</REVISION>
 			<DOCNUMBER></DOCNUMBER>
 			<ORGANISATION>Release under http://creativecommons.org/licenses/by-sa/4.0/</ORGANISATION>
 			<SHEETS>1 of 1</SHEETS>
 			<SHOWS>1</SHOWS>
-			<DATE>2014-10-29</DATE>
+			<DATE>2014-11-19</DATE>
 			<GRID spacing='50.00000' snap='1'/>
 		</DETAILS>
 		<FONT id='1'>
@@ -609,7 +609,7 @@ download the executable.-->
 				<PIN pos='20.00000,63.00000' which='4' elec='0' direction='3' part='0' number='12' show='3' length='30' number_pos='0' centre_name='0'>Vss</PIN>
 			</TinyCAD>
 		</SYMBOLDEF>
-		<SYMBOLDEF id='14'>
+		<SYMBOLDEF id='11'>
 			<NAME type='0'>POT</NAME>
 			<REF type='0'>R?</REF>
 			<DESCRIPTION>Variable Resistor</DESCRIPTION>
@@ -638,7 +638,7 @@ download the executable.-->
 				<PIN pos='44.00000,54.00000' which='0' elec='4' direction='0' part='0' number='1' show='0' length='30' number_pos='0' centre_name='0'>b</PIN>
 			</TinyCAD>
 		</SYMBOLDEF>
-		<SYMBOLDEF id='15'>
+		<SYMBOLDEF id='12'>
 			<NAME type='0'>LCD1602</NAME>
 			<REF type='0'>U?</REF>
 			<DESCRIPTION>LCD1602</DESCRIPTION>
@@ -841,7 +841,7 @@ download the executable.-->
 		<WIRE a='151.00000,80.00000' b='154.00000,80.00000'/>
 		<WIRE a='154.00000,80.00000' b='154.00000,89.00000'/>
 		<WIRE a='154.00000,89.00000' b='160.00000,89.00000'/>
-		<SYMBOL id='14' pos='29.00000,71.00000' part='0' rotate='0' can_scale='0' show_power='0' scale_x='1.00000' scale_y='1.00000'>
+		<SYMBOL id='11' pos='29.00000,71.00000' part='0' rotate='0' can_scale='0' show_power='0' scale_x='1.00000' scale_y='1.00000'>
 			<FIELD type='0' description='Ref' value='R?' show='0' pos='1.00000,-15.60000'/>
 			<FIELD type='0' description='Name' value='POT' show='0' pos='1.00000,-18.00000'/>
 		</SYMBOL>
@@ -851,7 +851,7 @@ download the executable.-->
 		<WIRE a='84.00000,56.00000' b='67.00000,56.00000'/>
 		<WIRE a='84.00000,74.00000' b='52.00000,74.00000'/>
 		<WIRE a='84.00000,80.00000' b='46.00000,80.00000'/>
-		<SYMBOL id='15' pos='84.00000,42.00000' part='0' rotate='0' can_scale='0' show_power='1' scale_x='1.00000' scale_y='1.00000'>
+		<SYMBOL id='12' pos='84.00000,42.00000' part='0' rotate='0' can_scale='0' show_power='1' scale_x='1.00000' scale_y='1.00000'>
 			<FIELD type='0' description='Ref' value='U?' show='0' pos='1.00000,-19.00000'/>
 			<FIELD type='0' description='Name' value='LCD1602' show='0' pos='1.00000,-19.00000'/>
 			<FIELD type='2' description='$$SPICE_PROLOG_PRIORITY' value='5' show='0' pos='0.00000,0.00000'/>
